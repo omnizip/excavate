@@ -28,18 +28,35 @@ module Excavate
       end
 
       def extract_tar_xz(target)
-        # Decompress XZ to get gzip data
-        gzip_data = Omnizip::Formats::Xz.decompress(@archive)
-        # Decompress gzip to get tar data
-        tar_data = Zlib::GzipReader.new(StringIO.new(gzip_data)).read
+        data = Omnizip::Formats::Xz.decompress(@archive)
+        data = strip_compression(data)
+        validate_tar!(data)
 
         # Write tar file and extract
         temp_tar = File.join(target, ".temp_#{Time.now.to_i}_#{rand(1000)}.tar")
-        File.binwrite(temp_tar, tar_data)
+        File.binwrite(temp_tar, data)
 
         TarExtractor.new(temp_tar).extract(target)
       ensure
         File.delete(temp_tar) if temp_tar && File.exist?(temp_tar)
+      end
+
+      def strip_compression(data)
+        if FileMagic.detect_bytes(data) == :gzip
+          return Zlib::GzipReader.new(StringIO.new(data)).read
+        end
+
+        data
+      end
+
+      def validate_tar!(data)
+        inner_type = FileMagic.detect_bytes(data)
+        return if inner_type == :tar
+
+        inner_type ||= "unknown format"
+
+        raise UnknownArchiveError,
+              "Expected tar inside #{@archive}, got #{inner_type}"
       end
 
       def extract_pure_xz(target)

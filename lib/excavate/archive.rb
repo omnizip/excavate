@@ -218,7 +218,11 @@ module Excavate
       replace_archive_with_contents(archive, target)
     rescue StandardError
       FileUtils.rm_rf(target)
-      raise unless normalized_extension(archive) == "exe"
+      # During recursive extraction of nested archives, silently skip
+      # any that fail (e.g. .msi files that aren't real OLE, .cab files
+      # with incompatible format, .exe files with unsupported compression).
+      # Only re-raise for file types we don't recognize as archives.
+      raise unless TYPES.key?(normalized_extension(archive))
     end
 
     def replace_archive_with_contents(archive, target)
