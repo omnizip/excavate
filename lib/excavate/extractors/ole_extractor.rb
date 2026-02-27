@@ -22,6 +22,8 @@ module Excavate
 
         Omnizip::Formats::Ole.open(@archive) do |ole|
           children(ole).each do |entry|
+            next if ole.directory?(entry)
+
             path = File.join(target, prepare_filename(entry))
             FileUtils.mkdir_p(File.dirname(path))
             content = ole.read(entry)
