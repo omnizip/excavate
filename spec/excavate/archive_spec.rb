@@ -195,7 +195,7 @@ RSpec.describe Excavate::Archive do
         files = []
         described_class.new(archive)
           .files(files: ["level1.zip/level2.zip/level3.zip/file_at_deepest.txt"]) do |f|
-            files << f
+          files << f
         end
 
         expect(files.size).to be 1

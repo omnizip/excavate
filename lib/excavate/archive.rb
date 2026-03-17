@@ -18,7 +18,7 @@ module Excavate
       @archive = archive
     end
 
-    def files(recursive_packages: false, files: [], filter: nil, &block)
+    def files(recursive_packages: false, files: [], filter: nil, &)
       # Auto-enable recursive_packages when extracting specific files
       recursive_packages = true if files.any?
 
@@ -26,7 +26,7 @@ module Excavate
       extract(target, recursive_packages: recursive_packages,
                       files: files, filter: filter)
 
-      all_files_in(target).map(&block)
+      all_files_in(target).map(&)
     ensure
       windows_safe_rm_rf(target)
     end
