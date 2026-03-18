@@ -109,6 +109,8 @@ module Excavate
       extract_all(tmp, recursive_packages: recursive_packages)
       found_files = find_by_filter(tmp, filter)
       copy_files(found_files, target || Dir.pwd)
+    ensure
+      FileUtils.rm_rf(tmp)
     end
 
     def find_by_filter(source, filter)
@@ -216,8 +218,9 @@ module Excavate
       target = Dir.mktmpdir
       extract_recursively(archive, target)
       replace_archive_with_contents(archive, target)
-    rescue StandardError
+    ensure
       FileUtils.rm_rf(target)
+    rescue StandardError
       # During recursive extraction of nested archives, silently skip
       # any that fail (e.g. .msi files that aren't real OLE, .cab files
       # with incompatible format, .exe files with unsupported compression).

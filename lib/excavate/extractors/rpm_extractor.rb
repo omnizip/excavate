@@ -15,10 +15,11 @@ module Excavate
         rpm.open
         content = rpm.raw_payload
         path = target_path(@archive, rpm, target)
-        rpm.close
 
         FileUtils.mkdir_p(File.dirname(path))
         File.write(path, content, mode: "wb")
+      ensure
+        rpm&.close
       end
 
       private
