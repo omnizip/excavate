@@ -9,6 +9,8 @@ module Excavate
         reader = Omnizip::Formats::Zip::Reader.new(@archive)
         reader.read
         reader.extract_all(target)
+      ensure
+        reader&.close
       end
     end
   end
