@@ -8,8 +8,6 @@ module Excavate
       def extract(target)
         reader = Omnizip::Formats::Tar::Reader.open(@archive)
         reader.extract_all(target)
-      ensure
-        reader&.close
       end
     end
   end
