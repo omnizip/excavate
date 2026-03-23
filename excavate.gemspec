@@ -2,8 +2,6 @@
 
 require_relative "lib/excavate/version"
 
-# rubocop:disable Metrics/BlockLength
-
 Gem::Specification.new do |spec|
   spec.name          = "excavate"
   spec.version       = Excavate::VERSION
@@ -32,11 +30,9 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "cabriolet", "~> 0.2.2"
+  spec.add_dependency "cabriolet", "~> 0.2.4"
   spec.add_dependency "omnizip", "~> 0.3.8"
   spec.add_dependency "thor", "~> 1.0"
 
-  spec.metadata["rubygems_mfa_required"] = "false"
+  spec.metadata["rubygems_mfa_required"] = "true"
 end
-
-# rubocop:enable Metrics/BlockLength
