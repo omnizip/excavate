@@ -31,7 +31,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "cabriolet", "~> 0.2.4"
-  spec.add_dependency "omnizip", "~> 0.3.8"
+  spec.add_dependency "omnizip", "~> 0.3.9"
   spec.add_dependency "thor", "~> 1.0"
 
   spec.metadata["rubygems_mfa_required"] = "true"
