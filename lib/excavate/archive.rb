@@ -11,6 +11,7 @@ module Excavate
               "pkg" => Extractors::XarExtractor,
               "rpm" => Extractors::RpmExtractor,
               "tar" => Extractors::TarExtractor,
+              "txz" => Extractors::XzExtractor,
               "xz" => Extractors::XzExtractor,
               "zip" => Extractors::ZipExtractor }.freeze
 
