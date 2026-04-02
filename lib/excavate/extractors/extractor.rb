@@ -1,23 +1,23 @@
 module Excavate
   module Extractors
     class Extractor
-      # Single mapping from FileMagic type to extractor class.
-      # Used by both Archive (to pick extractor for a file) and
-      # extract_inner (to dispatch decompressed data).
+      MAGIC_MAP = {
+        cab: "CabExtractor",
+        cpio: "CpioExtractor",
+        exe: "SevenZipExtractor",
+        gzip: "GzipExtractor",
+        ole: "OleExtractor",
+        rpm: "RpmExtractor",
+        seven_zip: "SevenZipExtractor",
+        tar: "TarExtractor",
+        xar: "XarExtractor",
+        xz: "XzExtractor",
+        zip: "ZipExtractor",
+      }.freeze
+
       def self.for_magic_type(type)
-        case type
-        when :cab then CabExtractor
-        when :cpio then CpioExtractor
-        when :exe then SevenZipExtractor
-        when :gzip then GzipExtractor
-        when :ole then OleExtractor
-        when :rpm then RpmExtractor
-        when :seven_zip then SevenZipExtractor
-        when :tar then TarExtractor
-        when :xar then XarExtractor
-        when :xz then XzExtractor
-        when :zip then ZipExtractor
-        end
+        name = MAGIC_MAP[type]
+        Extractors.const_get(name) if name
       end
 
       def initialize(archive)
@@ -30,7 +30,8 @@ module Excavate
 
       private
 
-      # Detect inner format of decompressed data and extract or write raw output.
+      # Detect inner format of decompressed data and extract
+      # or write raw output.
       # Shared by GzipExtractor and XzExtractor.
       def extract_inner(data, target)
         inner_type = FileMagic.detect_bytes(data)
