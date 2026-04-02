@@ -55,7 +55,7 @@ RSpec.describe Excavate::Archive do
     context "gzip" do
       let(:archive_example) { "fonts.tar.gz" }
 
-      include_examples "yields filename", "fonts.tar"
+      include_examples "yields filename", "Marlett.ttf"
     end
 
     context "ole" do

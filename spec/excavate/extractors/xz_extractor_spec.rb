@@ -82,8 +82,8 @@ RSpec.describe Excavate::Extractors::XzExtractor do
 
     let(:archive_file) { "test.tar.xz" }
 
-    it "is registered in Archive::TYPES" do
-      expect(Excavate::Archive::TYPES["xz"]).to eq(described_class)
+    it "is registered for xz magic type" do
+      expect(Excavate::Extractors::Extractor.for_magic_type(:xz)).to eq(described_class)
     end
 
     it "can be instantiated through Archive class" do
