@@ -48,11 +48,13 @@ RSpec.describe Excavate::Extractors::XzExtractor do
     context "with pure xz compressed file" do
       let(:archive_file) { "simple_test.txt.xz" }
 
-      it "extracts the decompressed file" do
+      it "extracts the decompressed file with correct content" do
         extractor.extract(target_dir)
         extracted_file = File.join(target_dir, "simple_test.txt")
 
         expect(File.exist?(extracted_file)).to be true
+        content = File.read(extracted_file)
+        expect(content).to include("Simple XZ compressed file content")
       end
     end
 
