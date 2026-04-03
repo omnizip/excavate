@@ -1,20 +1,5 @@
 module Excavate
   class Archive
-    INVALID_MEMORY_MESSAGE =
-      "invalid memory read at address=0x0000000000000000".freeze
-
-    TYPES = { "cab" => Extractors::CabExtractor,
-              "cpio" => Extractors::CpioExtractor,
-              "exe" => Extractors::SevenZipExtractor,
-              "gz" => Extractors::GzipExtractor,
-              "msi" => Extractors::OleExtractor,
-              "pkg" => Extractors::XarExtractor,
-              "rpm" => Extractors::RpmExtractor,
-              "tar" => Extractors::TarExtractor,
-              "txz" => Extractors::XzExtractor,
-              "xz" => Extractors::XzExtractor,
-              "zip" => Extractors::ZipExtractor }.freeze
-
     def initialize(archive)
       @archive = archive
     end
@@ -194,25 +179,24 @@ module Excavate
       FileUtils.cp(archive, target)
     end
 
-    def may_be_nested_cab?(extension, message)
-      extension == "exe" &&
-        (message.start_with?("Invalid file format",
-                             "Unrecognized archive format") ||
-         message.include?("Invalid .7z signature"))
-    end
-
     def extract_once(archive, target)
-      extension = normalized_extension(archive)
-      extractor_class = TYPES[extension]
+      type = FileMagic.detect(archive)
+      extractor_class = Extractors::Extractor.for_magic_type(type)
       unless extractor_class
         raise(UnknownArchiveError, "Could not unarchive `#{archive}`.")
       end
 
       extractor_class.new(archive).extract(target)
     rescue StandardError => e
-      raise unless may_be_nested_cab?(extension, e.message)
+      raise unless type == :exe && may_be_nested_cab?(e.message)
 
       Extractors::CabExtractor.new(archive).extract(target)
+    end
+
+    def may_be_nested_cab?(message)
+      message.start_with?("Invalid file format",
+                          "Unrecognized archive format") ||
+        message.include?("Invalid .7z signature")
     end
 
     def extract_and_replace(archive)
@@ -223,8 +207,8 @@ module Excavate
       # During recursive extraction of nested archives, silently skip
       # any that fail (e.g. .msi files that aren't real OLE, .cab files
       # with incompatible format, .exe files with unsupported compression).
-      # Only re-raise for file types we don't recognize as archives.
-      raise unless TYPES.key?(normalized_extension(archive))
+      # Only re-raise if the file is not a recognized archive format.
+      raise unless File.exist?(archive) && archive?(archive)
     ensure
       FileUtils.rm_rf(target)
     end
@@ -279,22 +263,6 @@ module Excavate
       end
     end
 
-    def normalized_extension(file)
-      fetch_extension(file).downcase
-    end
-
-    def fetch_extension(file)
-      File.extname(filename(file)).sub(/^\./, "")
-    end
-
-    def filename(file)
-      if file.respond_to?(:original_filename)
-        file.original_filename
-      else
-        File.basename(file)
-      end
-    end
-
     def all_files_in(dir)
       Dir.glob(File.join(dir, "**", "*"))
     end
@@ -302,10 +270,8 @@ module Excavate
     def archive?(file)
       return false unless File.file?(file)
 
-      ext = normalized_extension(file)
-      return false if ext == "gz" && FileMagic.detect(file) != :gzip
-
-      TYPES.key?(ext)
+      type = FileMagic.detect(file)
+      !type.nil? && !Extractors::Extractor.for_magic_type(type).nil?
     end
   end
 end
