@@ -1,11 +1,17 @@
-require_relative "extractors/extractor"
-require_relative "extractors/cab_extractor"
-require_relative "extractors/cpio_extractor"
-require_relative "extractors/gzip_extractor"
-require_relative "extractors/ole_extractor"
-require_relative "extractors/rpm_extractor"
-require_relative "extractors/seven_zip_extractor"
-require_relative "extractors/tar_extractor"
-require_relative "extractors/xar_extractor"
-require_relative "extractors/xz_extractor"
-require_relative "extractors/zip_extractor"
+# frozen_string_literal: true
+
+module Excavate
+  module Extractors
+    autoload :Extractor, "excavate/extractors/extractor"
+    autoload :CabExtractor, "excavate/extractors/cab_extractor"
+    autoload :CpioExtractor, "excavate/extractors/cpio_extractor"
+    autoload :GzipExtractor, "excavate/extractors/gzip_extractor"
+    autoload :OleExtractor, "excavate/extractors/ole_extractor"
+    autoload :RpmExtractor, "excavate/extractors/rpm_extractor"
+    autoload :SevenZipExtractor, "excavate/extractors/seven_zip_extractor"
+    autoload :TarExtractor, "excavate/extractors/tar_extractor"
+    autoload :XarExtractor, "excavate/extractors/xar_extractor"
+    autoload :XzExtractor, "excavate/extractors/xz_extractor"
+    autoload :ZipExtractor, "excavate/extractors/zip_extractor"
+  end
+end

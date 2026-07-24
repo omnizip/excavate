@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 require "omnizip"
-require "omnizip/formats/xar"
 
 module Excavate
   module Extractors
     class XarExtractor < Extractor
+      handles :xar
+
       def extract(target)
         Omnizip::Formats::Xar.extract(@archive, target)
         rename_payload(target)

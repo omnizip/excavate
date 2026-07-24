@@ -5,8 +5,9 @@ require "omnizip"
 module Excavate
   module Extractors
     class SevenZipExtractor < Extractor
+      handles :seven_zip, :exe
+
       def extract(target)
-        # Check for embedded 7z in self-extracting archives
         offset = Omnizip::Formats::SevenZip.search_embedded(@archive)
 
         if offset
@@ -15,7 +16,6 @@ module Excavate
             reader.extract_all(target)
           end
         else
-          # Regular 7z archive
           Omnizip::Formats::SevenZip.open(@archive) do |reader|
             reader.extract_all(target)
           end

@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require "omnizip"
-require "omnizip/formats/ole"
-require_relative "../file_magic"
 
 module Excavate
   module Extractors
@@ -10,6 +8,8 @@ module Excavate
     #
     # Uses Omnizip's OLE format support for extraction.
     class OleExtractor < Extractor
+      handles :ole
+
       def extract(target)
         do_extract(target)
         rename_archives(target)

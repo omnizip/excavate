@@ -1,14 +1,19 @@
+# frozen_string_literal: true
+
 module Excavate
   module Utils
     module_function
 
+    # Redirect +stream+ to /dev/null (File::NULL on every platform) for
+    # the duration of the block, then restore it. Used by spec/cli to
+    # swallow Thor's stdout during command tests.
     def silence_stream(stream)
-      old_stream = stream.dup
-      stream.reopen(/mswin|mingw/.match?(RbConfig::CONFIG["host_os"]) ? File::NULL : File::NULL)
+      previous = stream.dup
+      stream.reopen(File::NULL)
       stream.sync = true
       yield
     ensure
-      stream.reopen(old_stream)
+      stream.reopen(previous)
     end
   end
 end

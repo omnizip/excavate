@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "excavate/version"
-require_relative "excavate/extractors"
-require_relative "excavate/archive"
-require_relative "excavate/file_magic"
-require_relative "excavate/utils"
+require "fileutils"
+require "tmpdir"
 
 module Excavate
   class Error < StandardError; end
@@ -16,4 +13,17 @@ module Excavate
   class TargetNotFoundError < Error; end
 
   class UnknownArchiveError < Error; end
+end
+
+module Excavate
+  autoload :VERSION, "excavate/version"
+  autoload :FileMagic, "excavate/file_magic"
+  autoload :Utils, "excavate/utils"
+  autoload :Filesystem, "excavate/filesystem"
+  autoload :Targets, "excavate/targets"
+  autoload :Selection, "excavate/selection"
+  autoload :NestedCabFallback, "excavate/nested_cab_fallback"
+  autoload :Extractors, "excavate/extractors"
+  autoload :Archive, "excavate/archive"
+  autoload :CLI, "excavate/cli"
 end
