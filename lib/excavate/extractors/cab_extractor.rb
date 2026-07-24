@@ -5,6 +5,8 @@ require "cabriolet"
 module Excavate
   module Extractors
     class CabExtractor < Extractor
+      handles :cab
+
       def extract(target)
         decompressor = Cabriolet::CAB::Decompressor.new
         decompressor.salvage = true # Enable salvage mode for compatibility

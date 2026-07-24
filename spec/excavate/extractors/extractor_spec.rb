@@ -1,14 +1,12 @@
 require "spec_helper"
 
 RSpec.describe Excavate::Extractors::Extractor do
-  describe "MAGIC_MAP" do
-    it "maps all expected magic types" do
+  describe ".registered_types" do
+    it "includes all expected magic types" do
       expected_types = %i[cab cpio exe gzip ole rpm seven_zip tar xar xz zip]
-      expect(described_class::MAGIC_MAP.keys).to match_array(expected_types)
-    end
-
-    it "is frozen" do
-      expect(described_class::MAGIC_MAP).to be_frozen
+      # Force every subclass to load so registration has fired.
+      described_class.for_magic_type(:cab)
+      expect(described_class.registered_types).to include(*expected_types)
     end
   end
 

@@ -5,6 +5,8 @@ require "zlib"
 module Excavate
   module Extractors
     class GzipExtractor < Extractor
+      handles :gzip
+
       def extract(target)
         data = Zlib::GzipReader.open(@archive, &:read)
         extract_inner(data, target)

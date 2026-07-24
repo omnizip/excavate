@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "omnizip"
-require "omnizip/formats/rpm"
 
 module Excavate
   module Extractors
@@ -10,6 +9,8 @@ module Excavate
     # Uses Omnizip's RPM format support for extraction.
     # Extracts the raw payload as a file (e.g., fonts.src.cpio.gz).
     class RpmExtractor < Extractor
+      handles :rpm
+
       def extract(target)
         rpm = Omnizip::Formats::Rpm::Reader.new(@archive)
         rpm.open

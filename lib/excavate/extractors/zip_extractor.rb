@@ -5,6 +5,8 @@ require "omnizip"
 module Excavate
   module Extractors
     class ZipExtractor < Extractor
+      handles :zip
+
       def extract(target)
         reader = Omnizip::Formats::Zip::Reader.new(@archive)
         reader.read

@@ -5,6 +5,8 @@ require "omnizip"
 module Excavate
   module Extractors
     class XzExtractor < Extractor
+      handles :xz
+
       def extract(target)
         data = Omnizip::Formats::Xz.decompress(@archive)
         extract_inner(data, target)

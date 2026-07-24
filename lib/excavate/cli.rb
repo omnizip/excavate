@@ -1,7 +1,5 @@
 require "thor"
 
-require_relative "../excavate"
-
 module Excavate
   class CLI < Thor
     STATUS_SUCCESS = 0
