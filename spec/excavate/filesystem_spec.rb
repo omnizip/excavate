@@ -88,4 +88,36 @@ RSpec.describe Excavate::Filesystem do
       expect(attempts).to eq(1)
     end
   end
+
+  describe ".replace_with_contents" do
+    it "moves the contents directory to the archive path" do
+      archive = File.join(work_dir, "old.zip")
+      FileUtils.touch(archive)
+      contents = Dir.mktmpdir
+      FileUtils.touch(File.join(contents, "extracted.txt"))
+
+      described_class.replace_with_contents(archive, contents)
+
+      expect(File.directory?(archive)).to be true
+      expect(File.exist?(File.join(archive, "extracted.txt"))).to be true
+    ensure
+      FileUtils.rm_rf(contents)
+    end
+
+    it "degrades to scatter-copy when FileUtils.mv raises EACCES" do
+      archive = File.join(work_dir, "locked.zip")
+      FileUtils.touch(archive)
+      contents = Dir.mktmpdir
+      FileUtils.touch(File.join(contents, "extracted.txt"))
+
+      allow(FileUtils).to receive(:mv).and_raise(Errno::EACCES, "locked")
+
+      described_class.replace_with_contents(archive, contents)
+
+      # Scatter-copy puts the extracted file next to the archive's parent.
+      expect(File.exist?(File.join(work_dir, "extracted.txt"))).to be true
+    ensure
+      FileUtils.rm_rf(contents)
+    end
+  end
 end
