@@ -55,7 +55,7 @@ module Excavate
       FileUtils.mkdir_p(target)
       files.map do |file|
         target_path = File.join(target, File.basename(file))
-        Targets.ensure_absent(target_path)
+        ensure_target_absent(target_path)
 
         FileUtils.cp(file, target_path)
 
@@ -65,8 +65,8 @@ module Excavate
 
     def extract_all(target, recursive_packages: false)
       source = File.expand_path(@archive)
-      target ||= Targets.default_for(source)
-      Targets.ensure_empty(target)
+      target ||= default_target(source)
+      ensure_target_empty(target)
 
       if recursive_packages
         extract_recursively(source, target)
@@ -74,6 +74,28 @@ module Excavate
         extract_once(source, target)
       end
 
+      target
+    end
+
+    def ensure_target_absent(path)
+      return unless File.exist?(path)
+
+      kind = File.directory?(path) ? "directory" : "file"
+      raise TargetExistsError,
+            "Target #{kind} `#{File.basename(path)}` already exists."
+    end
+
+    def ensure_target_empty(path)
+      return if Dir.empty?(path)
+
+      raise TargetNotEmptyError,
+            "Target directory `#{File.basename(path)}` is not empty."
+    end
+
+    def default_target(source)
+      target = File.expand_path(File.basename(source, ".*"))
+      ensure_target_absent(target)
+      FileUtils.mkdir(target)
       target
     end
 
@@ -123,7 +145,7 @@ module Excavate
     def extract_and_replace(archive)
       target = Dir.mktmpdir
       extract_recursively(archive, target)
-      replace_archive_with_contents(archive, target)
+      Filesystem.replace_with_contents(archive, target)
     rescue StandardError
       # During recursive extraction of nested archives, silently skip
       # any that fail (e.g. .msi files that aren't real OLE, .cab files
@@ -132,21 +154,6 @@ module Excavate
       raise unless File.exist?(archive) && archive?(archive)
     ensure
       Filesystem.remove_recursive(target) if target
-    end
-
-    def replace_archive_with_contents(archive, target)
-      Filesystem.remove(archive)
-      FileUtils.mv(target, archive)
-    rescue Errno::EACCES
-      # Windows: file is locked. Copy extracted contents out next to
-      # the locked archive so the user still has access to them.
-      target_dir = File.dirname(archive)
-      Dir.glob(File.join(target, "**", "*")).each do |src|
-        next unless File.file?(src)
-
-        dest = File.join(target_dir, File.basename(src))
-        FileUtils.cp(src, dest) unless File.exist?(dest)
-      end
     end
 
     def all_files_in(dir)

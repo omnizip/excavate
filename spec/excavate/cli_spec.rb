@@ -1,11 +1,13 @@
 require "excavate/cli"
 
 RSpec.describe Excavate::CLI do
+  include SilenceStream
+
   describe "#extract" do
     include_context "fresh work dir"
 
     around do |example|
-      Excavate::Utils.silence_stream($stdout) do
+      silence_stream($stdout) do
         example.run
       end
     end
