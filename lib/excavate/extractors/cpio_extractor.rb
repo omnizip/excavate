@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "omnizip/formats/cpio"
+require "omnizip"
 
 module Excavate
   module Extractors
