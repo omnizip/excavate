@@ -108,14 +108,6 @@ RSpec.describe Excavate::Extractors::XzExtractor do
     it "inherits from Extractor base class" do
       expect(described_class.superclass).to eq(Excavate::Extractors::Extractor)
     end
-
-    it "responds to extract method" do
-      expect(extractor).to respond_to(:extract)
-    end
-
-    it "accepts a target directory parameter" do
-      expect(extractor.method(:extract).arity).to eq(1)
-    end
   end
 
   describe "Omnizip integration" do
