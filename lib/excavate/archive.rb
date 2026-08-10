@@ -55,7 +55,7 @@ module Excavate
       FileUtils.mkdir_p(target)
       files.map do |file|
         target_path = File.join(target, File.basename(file))
-        Targets.ensure_absent(target_path)
+        ensure_target_absent(target_path)
 
         FileUtils.cp(file, target_path)
 
@@ -65,8 +65,8 @@ module Excavate
 
     def extract_all(target, recursive_packages: false)
       source = File.expand_path(@archive)
-      target ||= Targets.create_default(source)
-      Targets.ensure_empty(target)
+      target ||= default_target(source)
+      ensure_target_empty(target)
 
       if recursive_packages
         extract_recursively(source, target)
@@ -74,6 +74,28 @@ module Excavate
         extract_once(source, target)
       end
 
+      target
+    end
+
+    def ensure_target_absent(path)
+      return unless File.exist?(path)
+
+      kind = File.directory?(path) ? "directory" : "file"
+      raise TargetExistsError,
+            "Target #{kind} `#{File.basename(path)}` already exists."
+    end
+
+    def ensure_target_empty(path)
+      return if Dir.empty?(path)
+
+      raise TargetNotEmptyError,
+            "Target directory `#{File.basename(path)}` is not empty."
+    end
+
+    def default_target(source)
+      target = File.expand_path(File.basename(source, ".*"))
+      ensure_target_absent(target)
+      FileUtils.mkdir(target)
       target
     end
 

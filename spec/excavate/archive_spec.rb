@@ -392,5 +392,78 @@ RSpec.describe Excavate::Archive do
         expect(files.first).to end_with("test1.txt")
       end
     end
+
+    # Where extraction output is allowed to land. A target must either
+    # not exist yet or be an empty directory, and an unnamed target is
+    # derived from the archive's own basename. These drive the public
+    # API only -- the policy is Archive's own, not a collaborator's.
+    context "target path policy" do
+      let(:archive_example) { "several_files.zip" }
+
+      it "creates a target named after the archive and returns it" do
+        target = described_class.new(archive).extract
+
+        expect(target).to eq(File.expand_path("several_files"))
+        expect(File.file?(File.join("several_files", "file1"))).to be true
+      end
+
+      it "refuses a default target when a directory of that name exists" do
+        FileUtils.mkdir("several_files")
+
+        expect { described_class.new(archive).extract }
+          .to raise_error(Excavate::TargetExistsError,
+                          "Target directory `several_files` already exists.")
+      end
+
+      it "refuses a default target when a file of that name exists" do
+        File.write("several_files", "mine")
+
+        expect { described_class.new(archive).extract }
+          .to raise_error(Excavate::TargetExistsError,
+                          "Target file `several_files` already exists.")
+        expect(File.read("several_files")).to eq("mine")
+      end
+
+      it "extracts into a named target directory that is empty" do
+        FileUtils.mkdir("out")
+
+        expect(described_class.new(archive).extract("out")).to eq("out")
+        expect(File.file?(File.join("out", "file1"))).to be true
+      end
+
+      it "refuses a named target directory that already has entries" do
+        FileUtils.mkdir("out")
+        FileUtils.touch(File.join("out", "occupant.txt"))
+
+        expect { described_class.new(archive).extract("out") }
+          .to raise_error(Excavate::TargetNotEmptyError,
+                          "Target directory `out` is not empty.")
+      end
+
+      it "refuses a named target that is a regular file" do
+        FileUtils.touch("out")
+
+        expect { described_class.new(archive).extract("out") }
+          .to raise_error(Excavate::TargetNotEmptyError,
+                          "Target directory `out` is not empty.")
+      end
+
+      it "refuses to overwrite a file a selected name would land on" do
+        File.write("file1", "mine")
+
+        expect { described_class.new(archive).extract(files: ["file1"]) }
+          .to raise_error(Excavate::TargetExistsError,
+                          "Target file `file1` already exists.")
+        expect(File.read("file1")).to eq("mine")
+      end
+
+      it "refuses to overwrite a directory a selected name would land on" do
+        FileUtils.mkdir("file1")
+
+        expect { described_class.new(archive).extract(files: ["file1"]) }
+          .to raise_error(Excavate::TargetExistsError,
+                          "Target directory `file1` already exists.")
+      end
+    end
   end
 end

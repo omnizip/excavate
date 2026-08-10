@@ -1,6 +1,6 @@
 # 11 — Specs for new collaborators
 
-Status: **pending**
+Status: **done**
 
 ## Why
 
@@ -8,12 +8,16 @@ Tasks 06–09 introduce four new collaborators (`Filesystem`, `Targets`,
 `Selection`, `NestedCabFallback`). The user's rule "good specs throughout"
 requires every public method to have specs.
 
+`Targets` was later reverted (see
+[07-archive-targets-helper.md](07-archive-targets-helper.md)), so three
+collaborators survive. Target-path policy is covered through
+`Archive#extract` in `spec/excavate/archive_spec.rb` instead.
+
 ## Scope
 
 New spec files to add:
 
 - `spec/excavate/filesystem_spec.rb`
-- `spec/excavate/targets_spec.rb`
 - `spec/excavate/selection_spec.rb`
 - `spec/excavate/nested_cab_fallback_spec.rb`
 
@@ -68,16 +72,21 @@ locks on Windows. Best compromise: stub FileUtils.rm to fail a fixed
 number of times then delegate to the original. Add a comment explaining
 why this is the rare exception.
 
-### targets_spec.rb
+### target path policy — in archive_spec.rb
 
-- `ensure_absent` is a no-op when path doesn't exist.
-- `ensure_absent` raises `TargetExistsError` for a file.
-- `ensure_absent` raises `TargetExistsError` for a directory (message
-  says "directory").
-- `ensure_empty` is a no-op for empty dir.
-- `ensure_empty` raises `TargetNotEmptyError` for non-empty dir.
-- `default_for` creates and returns a path named after the source
-  basename; raises if it already exists.
+`Targets` is gone, so these run against `Archive#extract` rather than a
+module. Same cases, driven through the public API:
+
+- A named empty target directory is accepted.
+- A named target that already has entries raises `TargetNotEmptyError`.
+- A named target that is a regular file raises `TargetNotEmptyError`.
+- An unnamed target is created from the archive basename with the
+  extension stripped, and the absolute path is returned.
+- An unnamed target raises `TargetExistsError` when a file or a
+  directory of that name already sits there, and the message says
+  which of the two it found.
+- A selected file that would land on an existing file or directory
+  raises `TargetExistsError` and leaves the existing content alone.
 
 ### selection_spec.rb
 
@@ -97,5 +106,7 @@ why this is the rare exception.
 
 ## Acceptance
 
-- All four new spec files exist and pass.
+- All three new spec files exist and pass.
+- Target-path policy is covered in `archive_spec.rb` through
+  `Archive#extract`, with no reach into private methods.
 - `bundle exec rspec` total example count grows by ~20.
