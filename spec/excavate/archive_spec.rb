@@ -393,10 +393,20 @@ RSpec.describe Excavate::Archive do
       end
     end
 
-    # Where extraction output is allowed to land. A target must either
-    # not exist yet or be an empty directory, and an unnamed target is
-    # derived from the archive's own basename. These drive the public
-    # API only -- the policy is Archive's own, not a collaborator's.
+    # Where extraction output is allowed to land. The rule differs by
+    # mode, so both are covered here:
+    #
+    # - Whole archive, no target named: one is created from the
+    #   archive's basename, and it must not already exist.
+    # - Whole archive, target named: it must already exist and be an
+    #   empty directory. A missing one raises Errno::ENOENT, not a
+    #   domain error.
+    # - Selected files: the target is created if missing and may
+    #   already hold entries. Only the name each file would land on is
+    #   checked.
+    #
+    # These drive the public API only -- the policy is Archive's own,
+    # not a collaborator's.
     context "target path policy" do
       let(:archive_example) { "several_files.zip" }
 
@@ -438,6 +448,26 @@ RSpec.describe Excavate::Archive do
         expect { described_class.new(archive).extract("out") }
           .to raise_error(Excavate::TargetNotEmptyError,
                           "Target directory `out` is not empty.")
+      end
+
+      it "raises Errno::ENOENT for a named target that does not exist" do
+        expect { described_class.new(archive).extract("gone") }
+          .to raise_error(Errno::ENOENT)
+      end
+
+      it "accepts a named target with entries when files are selected" do
+        FileUtils.mkdir("out")
+        FileUtils.touch(File.join("out", "occupant.txt"))
+
+        described_class.new(archive).extract("out", files: ["file1"])
+
+        expect(Dir.children("out").sort).to eq(%w[file1 occupant.txt])
+      end
+
+      it "creates a missing named target when files are selected" do
+        described_class.new(archive).extract("gone/deeper", files: ["file1"])
+
+        expect(File.file?(File.join("gone", "deeper", "file1"))).to be true
       end
 
       it "refuses a named target that is a regular file" do

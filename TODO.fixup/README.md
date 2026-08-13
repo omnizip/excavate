@@ -28,6 +28,10 @@ This directory tracks every code-quality issue identified during the
 
 ## Final verification (2026-07-24)
 
+Historical snapshot, taken before 25412f1 reverted work order 07. The
+counts below still include `targets.rb` and `targets_spec.rb`, so they
+do not describe the current tree.
+
 ```
 $ bundle exec rspec
 210 examples, 0 failures
@@ -62,7 +66,7 @@ $ grep -rn "\.send(" lib/ spec/
 - `archive.rb` — uses Filesystem, Selection, NestedCabFallback collaborators; keeps target-path policy as private methods (`ensure_target_absent`, `ensure_target_empty`, `default_target`); public API unchanged; `files` returns an Enumerator when no block is given
 
 ### New specs (spec/excavate/)
-- `filesystem_spec.rb` — 7 examples
+- `filesystem_spec.rb` — 10 examples
 - `selection_spec.rb` — 7 examples
 - `nested_cab_fallback_spec.rb` — 6 examples
 
