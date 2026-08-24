@@ -78,9 +78,19 @@ module Excavate
     end
 
     def ensure_target_absent(path)
-      return unless File.exist?(path)
+      # File.exist? follows symlinks, so a dangling symlink would pass
+      # the check and let FileUtils.cp write through the link to its
+      # destination. Check File.symlink? as well to treat any symlink
+      # (dangling or not) as an existing target.
+      return unless File.exist?(path) || File.symlink?(path)
 
-      kind = File.directory?(path) ? "directory" : "file"
+      kind = if File.symlink?(path)
+               "symlink"
+             elsif File.directory?(path)
+               "directory"
+             else
+               "file"
+             end
       raise TargetExistsError,
             "Target #{kind} `#{File.basename(path)}` already exists."
     end

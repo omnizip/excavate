@@ -392,5 +392,133 @@ RSpec.describe Excavate::Archive do
         expect(files.first).to end_with("test1.txt")
       end
     end
+
+    # Where extraction output is allowed to land. The rule differs by
+    # mode, so both are covered here:
+    #
+    # - Whole archive, no target named: one is created from the
+    #   archive's basename, and it must not already exist.
+    # - Whole archive, target named: it must already exist and be an
+    #   empty directory. A missing one raises Errno::ENOENT, not a
+    #   domain error.
+    # - Selected files: the target is created if missing and may
+    #   already hold entries. Only the name each file would land on is
+    #   checked.
+    #
+    # These drive the public API only -- the policy is Archive's own,
+    # not a collaborator's.
+    context "target path policy" do
+      let(:archive_example) { "several_files.zip" }
+
+      it "creates a target named after the archive and returns it" do
+        target = described_class.new(archive).extract
+
+        expect(target).to eq(File.expand_path("several_files"))
+        expect(File.file?(File.join("several_files", "file1"))).to be true
+      end
+
+      it "refuses a default target when a directory of that name exists" do
+        FileUtils.mkdir("several_files")
+
+        expect { described_class.new(archive).extract }
+          .to raise_error(Excavate::TargetExistsError,
+                          "Target directory `several_files` already exists.")
+      end
+
+      it "refuses a default target when a file of that name exists" do
+        File.write("several_files", "mine")
+
+        expect { described_class.new(archive).extract }
+          .to raise_error(Excavate::TargetExistsError,
+                          "Target file `several_files` already exists.")
+        expect(File.read("several_files")).to eq("mine")
+      end
+
+      it "extracts into a named target directory that is empty" do
+        FileUtils.mkdir("out")
+
+        expect(described_class.new(archive).extract("out")).to eq("out")
+        expect(File.file?(File.join("out", "file1"))).to be true
+      end
+
+      it "refuses a named target directory that already has entries" do
+        FileUtils.mkdir("out")
+        FileUtils.touch(File.join("out", "occupant.txt"))
+
+        expect { described_class.new(archive).extract("out") }
+          .to raise_error(Excavate::TargetNotEmptyError,
+                          "Target directory `out` is not empty.")
+      end
+
+      it "raises Errno::ENOENT for a named target that does not exist" do
+        expect { described_class.new(archive).extract("gone") }
+          .to raise_error(Errno::ENOENT)
+      end
+
+      it "accepts a named target with entries when files are selected" do
+        FileUtils.mkdir("out")
+        FileUtils.touch(File.join("out", "occupant.txt"))
+
+        described_class.new(archive).extract("out", files: ["file1"])
+
+        expect(Dir.children("out").sort).to eq(%w[file1 occupant.txt])
+      end
+
+      it "creates a missing named target when files are selected" do
+        described_class.new(archive).extract("gone/deeper", files: ["file1"])
+
+        expect(File.file?(File.join("gone", "deeper", "file1"))).to be true
+      end
+
+      it "refuses a named target that is a regular file" do
+        FileUtils.touch("out")
+
+        expect { described_class.new(archive).extract("out") }
+          .to raise_error(Excavate::TargetNotEmptyError,
+                          "Target directory `out` is not empty.")
+      end
+
+      it "refuses to overwrite a file a selected name would land on" do
+        File.write("file1", "mine")
+
+        expect { described_class.new(archive).extract(files: ["file1"]) }
+          .to raise_error(Excavate::TargetExistsError,
+                          "Target file `file1` already exists.")
+        expect(File.read("file1")).to eq("mine")
+      end
+
+      it "refuses to overwrite a directory a selected name would land on" do
+        FileUtils.mkdir("file1")
+
+        expect { described_class.new(archive).extract(files: ["file1"]) }
+          .to raise_error(Excavate::TargetExistsError,
+                          "Target directory `file1` already exists.")
+      end
+
+      it "refuses a dangling symlink a selected name would land on " \
+         "and does not write through it" do
+        File.symlink("link_destination", "file1")
+
+        expect { described_class.new(archive).extract(files: ["file1"]) }
+          .to raise_error(Excavate::TargetExistsError,
+                          "Target symlink `file1` already exists.")
+        expect(File.exist?("link_destination")).to be false
+      end
+
+      it "refuses a symlink to an existing file a selected name would land on" do
+        File.write("link_destination", "mine")
+        File.symlink("link_destination", "file1")
+
+        expect { described_class.new(archive).extract(files: ["file1"]) }
+          .to raise_error(Excavate::TargetExistsError,
+                          "Target symlink `file1` already exists.")
+        expect(File.read("link_destination")).to eq("mine")
+      end
+
+      # Hostile entry names inside archives (e.g. `../escape`) are not
+      # policed at this layer: selected files land under their basename
+      # only, and whole-archive extraction delegates path handling (and
+      # zip-slip defense) to the extractor gems.
+    end
   end
 end
