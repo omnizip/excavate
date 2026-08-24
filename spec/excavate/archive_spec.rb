@@ -494,6 +494,31 @@ RSpec.describe Excavate::Archive do
           .to raise_error(Excavate::TargetExistsError,
                           "Target directory `file1` already exists.")
       end
+
+      it "refuses a dangling symlink a selected name would land on " \
+         "and does not write through it" do
+        File.symlink("link_destination", "file1")
+
+        expect { described_class.new(archive).extract(files: ["file1"]) }
+          .to raise_error(Excavate::TargetExistsError,
+                          "Target symlink `file1` already exists.")
+        expect(File.exist?("link_destination")).to be false
+      end
+
+      it "refuses a symlink to an existing file a selected name would land on" do
+        File.write("link_destination", "mine")
+        File.symlink("link_destination", "file1")
+
+        expect { described_class.new(archive).extract(files: ["file1"]) }
+          .to raise_error(Excavate::TargetExistsError,
+                          "Target symlink `file1` already exists.")
+        expect(File.read("link_destination")).to eq("mine")
+      end
+
+      # Hostile entry names inside archives (e.g. `../escape`) are not
+      # policed at this layer: selected files land under their basename
+      # only, and whole-archive extraction delegates path handling (and
+      # zip-slip defense) to the extractor gems.
     end
   end
 end

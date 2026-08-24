@@ -21,13 +21,13 @@ closed decision instead.
 Path policy lives in `lib/excavate/archive.rb` as private methods:
 
 - `ensure_target_absent(path)` — raises `TargetExistsError` when
-  `File.exist?(path)`. The message says "file" or "directory"
-  depending on what is there. Note it tests `File.exist?`, which
-  follows symlinks, so a dangling symlink does NOT raise here. What
-  happens next differs by call path: extracting a named file reaches
-  `FileUtils.cp`, which follows the link and writes through it to the
-  link's target; `default_target` reaches `FileUtils.mkdir`, which
-  raises `Errno::EEXIST` on the link.
+  `File.exist?(path) || File.symlink?(path)`. The message says "file",
+  "directory", or "symlink" depending on what is there. The symlink
+  check is deliberate: `File.exist?` alone follows symlinks, so a
+  dangling symlink used to pass and `FileUtils.cp` would write through
+  the link to its destination. That hole is now fixed — any symlink at
+  the target path (dangling or not) raises `TargetExistsError`, and a
+  regression spec pins it.
 - `ensure_target_empty(path)` — raises `TargetNotEmptyError` when the
   path is a non-empty directory or a regular file. A missing path
   raises `Errno::ENOENT` from `Dir.empty?`, not `TargetNotEmptyError`.
