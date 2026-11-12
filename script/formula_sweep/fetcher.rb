@@ -74,7 +74,7 @@ module FormulaSweep
       Tempfile.create(["archive-", ".part"], @cache_dir) do |file|
         file.binmode
         transfer(URI.parse(url), file, REDIRECT_LIMIT)
-        file.flush
+        file.close
         actual = Digest::SHA256.file(file.path).hexdigest
         unless checksums.include?(actual)
           raise IOError, "SHA256 mismatch: got #{actual}"
@@ -100,7 +100,9 @@ module FormulaSweep
         raise ArgumentError, "file URL must refer to the local host"
       end
 
-      File.open(URI::DEFAULT_PARSER.unescape(uri.path), "rb") do |source|
+      path = URI::DEFAULT_PARSER.unescape(uri.path)
+      path = path.delete_prefix("/") if path.match?(%r{\A/[A-Za-z]:/})
+      File.open(path, "rb") do |source|
         IO.copy_stream(source, file)
       end
     end

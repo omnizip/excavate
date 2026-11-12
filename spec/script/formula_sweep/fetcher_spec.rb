@@ -15,7 +15,10 @@ RSpec.describe FormulaSweep::Fetcher, :aggregate_failures do
   let(:contents) { "archive bytes\x00\xff".b }
   let(:checksum) { Digest::SHA256.hexdigest(contents) }
   let(:source) { File.join(directory, "archive.zip") }
-  let(:url) { "file://#{source}" }
+  let(:file_url) do
+    "file:///#{URI::DEFAULT_PARSER.escape(source.delete_prefix('/'))}"
+  end
+  let(:url) { file_url }
   let(:resource) do
     { "urls" => [url], "sha256" => checksum, "file_size" => contents.bytesize }
   end
@@ -32,8 +35,39 @@ RSpec.describe FormulaSweep::Fetcher, :aggregate_failures do
     expect(result.skipped).to be(false)
   end
 
+  it "closes the temporary download before renaming it on Windows" do
+    temporary = Tempfile.new("archive", directory)
+    allow(Tempfile).to receive(:create).and_yield(temporary)
+    allow(File).to receive(:rename).and_wrap_original do |rename, *args|
+      raise Errno::EACCES unless temporary.closed?
+
+      rename.call(*args)
+    end
+
+    result = fetcher.fetch(resource)
+
+    expect(result.errors).to be_empty
+    expect(File.binread(result.path)).to eq(contents)
+  ensure
+    temporary.close!
+  end
+
+  it "opens Windows drive paths from escaped local file URLs" do
+    resource["urls"] = ["file:///C:/archive%20files/archive.zip"]
+    allow(File).to receive(:open).and_call_original
+    allow(File).to receive(:open).with("C:/archive files/archive.zip", "rb")
+      .and_wrap_original do |_open, *_args, &block|
+        File.open(source, "rb", &block)
+      end
+
+    result = fetcher.fetch(resource)
+
+    expect(result.errors).to be_empty
+    expect(File.binread(result.path)).to eq(contents)
+  end
+
   it "tries URLs in order and stops after the first success" do
-    missing = "file://#{directory}/missing"
+    missing = "#{file_url}.missing"
     resource["urls"] = [missing, url, "unsupported://never-tried"]
 
     result = fetcher.fetch(resource)
@@ -44,7 +78,7 @@ RSpec.describe FormulaSweep::Fetcher, :aggregate_failures do
   end
 
   it "returns an error for every failed URL" do
-    resource["urls"] = ["file://#{directory}/missing", "unsupported://archive"]
+    resource["urls"] = ["#{file_url}.missing", "unsupported://archive"]
 
     result = fetcher.fetch(resource)
 
@@ -69,7 +103,7 @@ RSpec.describe FormulaSweep::Fetcher, :aggregate_failures do
   it "falls back after a checksum failure" do
     bad_source = File.join(directory, "bad.zip")
     File.write(bad_source, "bad bytes")
-    bad_url = "file://#{bad_source}"
+    bad_url = file_url.sub("archive.zip", "bad.zip")
     resource["urls"].unshift(bad_url)
 
     result = fetcher.fetch(resource)
@@ -252,7 +286,7 @@ RSpec.describe FormulaSweep::Fetcher, :aggregate_failures do
       end
 
       it "tries the next URL after an HTTP error" do
-        resource["urls"] << "file://#{source}"
+        resource["urls"] << file_url
 
         result = fetcher.fetch(resource)
 
