@@ -119,6 +119,73 @@ RSpec.describe FormulaSweep::Fetcher, :aggregate_failures do
     expect(File.binread(result.path)).to eq(contents)
   end
 
+  context "with multiple accepted checksums" do
+    let(:other_checksum) { Digest::SHA256.hexdigest("other archive") }
+
+    before { resource["sha256"] = [other_checksum, checksum] }
+
+    it "accepts any listed checksum and caches under the first" do
+      result = fetcher.fetch(resource)
+
+      expect(result.path).to eq(File.join(cache_dir, other_checksum))
+      expect(File.binread(result.path)).to eq(contents)
+      expect(result.errors).to be_empty
+    end
+
+    it "reuses a cache matching a later checksum without downloading" do
+      cached = fetcher.fetch(resource).path
+      File.unlink(source)
+
+      result = fetcher.fetch(resource)
+
+      expect(result.path).to eq(cached)
+      expect(File.binread(result.path)).to eq(contents)
+      expect(result.errors).to be_empty
+    end
+
+    it "rejects bytes matching none of the checksums" do
+      File.binwrite(source, "unaccepted archive")
+
+      result = fetcher.fetch(resource)
+
+      expect(result.path).to be_nil
+      expect(result.errors.fetch(url)).to include("SHA256 mismatch")
+      expect(Dir.children(cache_dir)).to be_empty
+    end
+  end
+
+  context "without usable checksums" do
+    it "returns a resource error when sha256 is missing" do
+      resource.delete("sha256")
+
+      result = fetcher.fetch(resource)
+
+      expect(result.path).to be_nil
+      expect(result.errors.fetch(:sha256)).to include("sha256")
+      expect(result.skipped).to be(false)
+      expect(File.exist?(cache_dir)).to be(false)
+    end
+
+    it "returns a resource error for an empty checksum list" do
+      resource["sha256"] = []
+
+      result = fetcher.fetch(resource)
+
+      expect(result.path).to be_nil
+      expect(result.errors.fetch(:sha256)).to include("sha256")
+    end
+
+    it "returns a resource error for a malformed checksum list" do
+      resource["sha256"] = [checksum, "../invalid"]
+
+      result = fetcher.fetch(resource)
+
+      expect(result.path).to be_nil
+      expect(result.errors.fetch(:sha256)).to include("sha256")
+      expect(File.exist?(cache_dir)).to be(false)
+    end
+  end
+
   it "skips Google sources without creating a cache" do
     resource["source"] = "google"
 

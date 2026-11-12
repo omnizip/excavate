@@ -8,6 +8,7 @@ require "uri"
 
 module FormulaSweep
   class Fetcher
+    # Errors are keyed by URL, or by :sha256 for invalid resource metadata.
     Result = Struct.new(:path, :errors, :skipped, keyword_init: true)
     REDIRECT_LIMIT = 5
 
@@ -20,32 +21,44 @@ module FormulaSweep
         return Result.new(errors: {}, skipped: true)
       end
 
-      checksum = checksum_for(resource)
-      FileUtils.mkdir_p(@cache_dir)
-      path = File.join(@cache_dir, checksum)
-      if File.file?(path) && Digest::SHA256.file(path).hexdigest == checksum
-        return Result.new(path: path, errors: {}, skipped: false)
+      checksums = checksums_for(resource)
+      if checksums.empty?
+        return Result.new(errors: {
+                            sha256: "sha256 requires valid SHA256 checksums",
+                          }, skipped: false)
       end
 
-      FileUtils.rm_f(path)
-      fetch_urls(Array(value(resource, :urls)), path, checksum)
+      fetch_archive(resource, checksums)
     end
 
     private
 
-    def checksum_for(resource)
-      checksum = value(resource, :sha256).to_s.downcase
-      unless checksum.match?(/\A[0-9a-f]{64}\z/)
-        raise ArgumentError, "sha256 must contain 64 hexadecimal characters"
+    def fetch_archive(resource, checksums)
+      FileUtils.mkdir_p(@cache_dir)
+      path = File.join(@cache_dir, checksums.first)
+      if File.file?(path) && checksums.include?(Digest::SHA256.file(path).hexdigest)
+        return Result.new(path: path, errors: {}, skipped: false)
       end
 
-      checksum
+      FileUtils.rm_f(path)
+      fetch_urls(Array(value(resource, :urls)), path, checksums)
     end
 
-    def fetch_urls(urls, path, checksum)
+    def checksums_for(resource)
+      checksums = Array(value(resource, :sha256)).map do |checksum|
+        checksum.to_s.downcase
+      end
+      return [] unless checksums.all? do |checksum|
+        checksum.match?(/\A[0-9a-f]{64}\z/)
+      end
+
+      checksums
+    end
+
+    def fetch_urls(urls, path, checksums)
       errors = {}
       urls.each do |url|
-        download(url, path, checksum)
+        download(url, path, checksums)
         return Result.new(path: path, errors: errors, skipped: false)
       rescue StandardError => e
         errors[url] = "#{e.class}: #{e.message}"
@@ -57,14 +70,14 @@ module FormulaSweep
       resource[key.to_s] || resource[key]
     end
 
-    def download(url, path, checksum)
+    def download(url, path, checksums)
       Tempfile.create(["archive-", ".part"], @cache_dir) do |file|
         file.binmode
         transfer(URI.parse(url), file, REDIRECT_LIMIT)
         file.flush
         actual = Digest::SHA256.file(file.path).hexdigest
-        unless actual == checksum
-          raise IOError, "SHA256 mismatch: expected #{checksum}, got #{actual}"
+        unless checksums.include?(actual)
+          raise IOError, "SHA256 mismatch: got #{actual}"
         end
 
         File.rename(file.path, path)
