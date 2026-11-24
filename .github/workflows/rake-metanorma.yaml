@@ -47,6 +47,4 @@ jobs:
           rubygems: ${{ matrix.ruby.rubygems }}
           bundler-cache: true
 
-      - uses: metanorma/metanorma-build-scripts/inkscape-setup-action@main
-
       - run: bundle exec rake
